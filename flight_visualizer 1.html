@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Enhanced Flight Data 3D Visualizer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.plot.ly/plotly-2.28.0.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --secondary-color: #64748b;
+      --success-color: #16a34a;
+      --warning-color: #ea580c;
+      --background: #f8fafc;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--background);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    
+    .header {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+      border-left: 4px solid var(--primary-color);
+    }
+    
+    h1 { 
+      margin: 0 0 8px 0; 
+      font-size: 28px; 
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 16px;
+      margin: 0;
+    }
+    
+    .controls-panel {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .control-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    button { 
+      padding: 10px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      font-size: 14px;
+    }
+    
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+    }
+    
+    button.primary { 
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+    
+    button.primary:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
+    }
+    
+    button.success {
+      background: var(--success-color);
+      color: white;
+      border-color: var(--success-color);
+    }
+    
+    button.warning {
+      background: var(--warning-color);
+      color: white;
+      border-color: var(--warning-color);
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      margin: 0;
+      transform: scale(1.1);
+    }
+    
+    .stats {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px;
+      border-radius: 10px;
+      font-size: 14px;
+      margin-top: 16px;
+      box-shadow: var(--shadow);
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+    
+    .stat-item {
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 18px;
+      font-weight: 700;
+      display: block;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    textarea { 
+      width: 100%;
+      height: 120px;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 12px;
+      padding: 12px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--card-bg);
+      resize: vertical;
+      transition: border-color 0.2s ease;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    
+    .plots-container { 
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    
+    .plot-card { 
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+    
+    .plot-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .main-plot {
+      height: 600px;
+    }
+    
+    .secondary-plots {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-top: 24px;
+    }
+    
+    .secondary-plot {
+      height: 350px;
+    }
+    
+    .plot-header {
+      padding: 16px 20px;
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border-bottom: 1px solid var(--border-color);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    
+    .plot-content {
+      padding: 16px;
+      height: calc(100% - 60px);
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+      color: var(--text-secondary);
+    }
+    
+    .loading.active {
+      display: block;
+    }
+    
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid var(--border-color);
+      border-top: 4px solid var(--primary-color);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 16px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .error {
+      background: #fee2e2;
+      color: #dc2626;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      border-left: 4px solid #dc2626;
+      display: none;
+    }
+    
+    .error.show {
+      display: block;
+    }
+    
+    .input-panel {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      margin-bottom: 24px;
+    }
+    
+    .input-label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: block;
+      color: var(--text-primary);
+    }
+    
+    @media (max-width: 768px) {
+      body { padding: 12px; }
+      
+      .secondary-plots {
+        grid-template-columns: 1fr;
+      }
+      
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .main-plot {
+        height: 500px;
+      }
+      
+      .secondary-plot {
+        height: 300px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 Flight Data 3D Visualizer</h1>
+    <p class="subtitle">Advanced flight trajectory analysis with interactive 3D visualization</p>
+  </div>
+
+  <div class="controls-panel">
+    <div class="controls-grid">
+      <div class="control-group">
+        <div class="control-row">
+          <button id="parseBtn" class="primary">🎯 Parse & Visualize</button>
+          <button id="downloadCsv" class="success">📊 Export CSV</button>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-row">
+          <button id="resetView">🔄 Reset View</button>
+          <button id="autoRotate">🌀 Auto Rotate</button>
+          <button id="fullscreen">📺 Fullscreen</button>
+        </div>
+      </div>
+      
+      <div class="control-group">
+        <div class="control-row">
+          <div class="checkbox-group">
+            <input type="checkbox" id="showPoints" checked>
+            <label for="showPoints">Markers</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showLine" checked>
+            <label for="showLine">Trajectory</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showSurface">
+            <label for="showSurface">Ground Plane</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="stats" class="stats" style="display: none;">
+      <div><strong>Flight Statistics</strong></div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-value" id="maxAltitude">--</span>
+          <span class="stat-label">Max Altitude (m)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="flightTime">--</span>
+          <span class="stat-label">Flight Time (s)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="maxDistance">--</span>
+          <span class="stat-label">Max Distance (m)</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value" id="dataPoints">--</span>
+          <span class="stat-label">Data Points</span>
+        </div>
+      </div>
+    </div>
+    
+    <div id="error" class="error"></div>
+  </div>
+
+  <div class="input-panel">
+    <label class="input-label" for="rawInput">Flight Data Input</label>
+    <textarea id="rawInput" spellcheck="false" placeholder="Paste your flight data here..."></textarea>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div>Processing flight data...</div>
+  </div>
+
+  <div class="plots-container">
+    <div class="plot-card main-plot">
+      <div class="plot-header">
+        🎯 3D Flight Trajectory
+      </div>
+      <div class="plot-content">
+        <div id="plot3d" style="height: 100%;"></div>
+      </div>
+    </div>
+    
+    <div class="secondary-plots">
+      <div class="plot-card secondary-plot">
+        <div class="plot-header">
+          🗺️ Ground Track
+        </div>
+        <div class="plot-content">
+          <div id="topdown" style="height: 100%;"></div>
+        </div>
+      </div>
+      
+      <div class="plot-card secondary-plot">
+        <div class="plot-header">
+          📈 Altitude Profile
+        </div>
+        <div class="plot-content">
+          <div id="altVsTime" style="height: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// Helpful utilities
+const $ = id => document.getElementById(id);
+let parsed = null;
+let autoRotate = false;
+let rotateInterval = null;
+
+function showError(msg) {
+  const el = $('error');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 8000);
+}
+
+function parseNumbersFromText(text) {
+  // Replace comma separators and weird characters, normalize scientific notation
+  const cleaned = text.replace(/,\s*/g, ' ').replace(/\u2013|\u2014/g, '-');
+  // Match numbers including optional sign, decimals, and scientific notation
+  const numRegex = /[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/g;
+  const nums = cleaned.match(numRegex);
+  if (!nums) return [];
+  return nums.map(n => Number(n));
+}
+
+function chunkArray(arr, size) {
+  const chunks = [];
+  for (let i = 0; i < arr.length; i += size) chunks.push(arr.slice(i, i + size));
+  return chunks;
+}
+
+function attemptStructuredParse(text) {
+  // Try to parse by lines that contain 3 or 4 numbers (time, alt, east, north)
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  const rows = [];
+  for (const line of lines) {
+    const nums = parseNumbersFromText(line);
+    if (nums.length >= 3) {
+      // If there's 3 numbers, assume Time Altitude East (no north) and set north=0
+      if (nums.length === 3) rows.push([nums[0], nums[1], nums[2], 0]);
+      else rows.push([nums[0], nums[1], nums[2], nums[3]]);
+    }
+  }
+  // If we got many rows, return them
+  if (rows.length >= 2) return rows;
+  // Otherwise fallback to global number parse and chunk into 4s
+  const flat = parseNumbersFromText(text);
+  if (flat.length % 4 === 0) return chunkArray(flat, 4);
+  // If not divisible by 4, try to find the first occurrence of a time-0 or small numbers
+  // We'll try chunking by 4 anyway, dropping tail
+  if (flat.length >= 4) return chunkArray(flat.slice(0, Math.floor(flat.length / 4) * 4), 4);
+  return [];
+}
+
+function prepareData(rows) {
+  // rows are arrays [t, alt, east, north]
+  const t = [], alt = [], east = [], north = [];
+  for (const r of rows) {
+    const [a,b,c,d] = r;
+    t.push(Number(a));
+    alt.push(Number(b));
+    east.push(Number(c));
+    north.push(Number(d));
+  }
+  return {t, alt, east, north};
+}
+
+function computeStats(data) {
+  const maxAlt = Math.max(...data.alt);
+  const flightTime = (data.t.length > 0) ? (Math.max(...data.t) - Math.min(...data.t)) : 0;
+  const distances = data.east.map((ex, i) => Math.hypot(ex, data.north[i]));
+  const maxDistance = Math.max(...distances);
+  return {maxAlt, flightTime, maxDistance, points: data.t.length};
+}
+
+function renderAll(data) {
+  const showPoints = $('showPoints').checked;
+  const showLine = $('showLine').checked;
+  const showSurface = $('showSurface').checked;
+
+  const traceLine = {
+    x: data.east,
+    y: data.north,
+    z: data.alt,
+    mode: showLine ? 'lines' : 'none',
+    type: 'scatter3d',
+    name: 'Trajectory',
+    line: { width: 4 },
+    hovertemplate: 'x: %{x}<br>y: %{y}<br>z: %{z}<extra></extra>'
+  };
+
+  const tracePoints = {
+    x: data.east,
+    y: data.north,
+    z: data.alt,
+    mode: showPoints ? 'markers' : 'none',
+    type: 'scatter3d',
+    name: 'Points',
+    marker: { size: 2 },
+    hovertemplate: 't: %{customdata}<br>x: %{x}<br>y: %{y}<br>z: %{z}<extra></extra>',
+    customdata: data.t
+  };
+
+  const layout3d = {
+    margin: { l: 0, r: 0, b: 0, t: 0 },
+    scene: {
+      xaxis: { title: 'East (m)' },
+      yaxis: { title: 'North (m)' },
+      zaxis: { title: 'Altitude (m)' },
+      aspectmode: 'auto'
+    },
+    legend: { orientation: 'h' }
+  };
+
+  const data3d = [traceLine, tracePoints];
+  Plotly.react('plot3d', data3d, layout3d, {responsive: true});
+
+  // Top-down ground track (x=east, y=north)
+  const topTrace = {
+    x: data.east,
+    y: data.north,
+    mode: 'lines+markers',
+    type: 'scatter',
+    name: 'Ground Track'
+  };
+  const topLayout = {margin: {t:20, l:40, r:20, b:40}, xaxis:{title:'East (m)'}, yaxis:{title:'North (m)', scaleanchor:'x'}};
+  Plotly.react('topdown', [topTrace], topLayout, {responsive:true});
+
+  // Altitude vs Time
+  const altTrace = {x: data.t, y: data.alt, mode: 'lines', type: 'scatter', name: 'Altitude'};
+  const altLayout = {margin: {t:20, l:40, r:20, b:40}, xaxis:{title:'Time (s)'}, yaxis:{title:'Altitude (m)'}};
+  Plotly.react('altVsTime', [altTrace], altLayout, {responsive:true});
+
+  // show stats
+  const stats = computeStats(data);
+  $('maxAltitude').textContent = stats.maxAlt.toFixed(3);
+  $('flightTime').textContent = stats.flightTime.toFixed(3);
+  $('maxDistance').textContent = stats.maxDistance.toFixed(3);
+  $('dataPoints').textContent = stats.points;
+  $('stats').style.display = 'block';
+}
+
+function parseAndVisualize() {
+  try {
+    $('loading').classList.add('active');
+    const text = $('rawInput').value.trim() || rawDump;
+    const rows = attemptStructuredParse(text);
+    if (!rows || rows.length === 0) { showError('Could not parse numeric data from input. Make sure your data contains numbers.'); $('loading').classList.remove('active'); return; }
+    const data = prepareData(rows);
+    parsed = data;
+    renderAll(data);
+    $('loading').classList.remove('active');
+  } catch (e) {
+    $('loading').classList.remove('active');
+    console.error(e);
+    showError('An error occurred while parsing/visualizing data. See console for details.');
+  }
+}
+
+function downloadCSV() {
+  if (!parsed) { showError('No parsed data to download. Press Parse & Visualize first.'); return; }
+  const rows = [['time_s','alt_m','east_m','north_m']];
+  for (let i=0;i<parsed.t.length;i++) rows.push([parsed.t[i], parsed.alt[i], parsed.east[i], parsed.north[i]]);
+  const csv = rows.map(r => r.join(',')).join('\n');
+  const blob = new Blob([csv], {type: 'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'flight_data.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function resetView() {
+  const gd = document.getElementById('plot3d');
+  Plotly.relayout(gd, {
+    'scene.camera': {
+      eye: {x: 1.5, y: 1.5, z: 0.8}
+    }
+  });
+}
+
+function toggleAutoRotate() {
+  autoRotate = !autoRotate;
+  const btn = $('autoRotate');
+  btn.classList.toggle('primary', autoRotate);
+  if (autoRotate) {
+    let angle = 0;
+    rotateInterval = setInterval(() => {
+      angle += 0.02;
+      const r = 1.6;
+      const eye = {x: r*Math.cos(angle), y: r*Math.sin(angle), z: 0.9};
+      Plotly.relayout('plot3d', {'scene.camera.eye': eye});
+    }, 30);
+  } else {
+    clearInterval(rotateInterval);
+    rotateInterval = null;
+  }
+}
+
+function goFullscreen() {
+  const el = document.documentElement;
+  if (!document.fullscreenElement) {
+    el.requestFullscreen?.();
+  } else {
+    document.exitFullscreen?.();
+  }
+}
+
+// Wire up controls
+$('parseBtn').addEventListener('click', () => parseAndVisualize());
+$('downloadCsv').addEventListener('click', () => downloadCSV());
+$('resetView').addEventListener('click', () => resetView());
+$('autoRotate').addEventListener('click', () => toggleAutoRotate());
+$('fullscreen').addEventListener('click', () => goFullscreen());
+$('showPoints').addEventListener('change', () => parsed && renderAll(parsed));
+$('showLine').addEventListener('change', () => parsed && renderAll(parsed));
+$('showSurface').addEventListener('change', () => parsed && renderAll(parsed));
+
+// Paste a long default dump into the textarea for convenience (user provided long rawDump)
+const rawDump = `write a html program to visualize the flight data and make it into a 3d plot # Simulation 1 (Up to date)# 530 data points written for 4 variables.## Time (s)Altitude (m)Position East of launch (m)Position North of launch (m) 
+ 
+# Event IGNITION occurred at t=0 seconds# Event LAUNCH occurred at t=0 seconds00000.0087.30E-042.00E-05-7.45E-050.0180.0082.06E-04-7.67E-04# Event LIFTOFF occurred at t=0.028 seconds0.0280.0246.05E-04-0.0020.0380.0490.001-0.0050.0480.0820.002-0.0080.0580.1250.003-0.0110.0680.1760.004-0.0160.0780.2370.006-0.0210.0880.3070.007-0.0270.0980.3860.009-0.0340.1080.4750.011-0.0420.1180.5740.013-0.050.1280.6820.016-0.060.1380.7990.019-0.070.1470.9230.022-0.080.1561.0470.024-0.0910.1651.170.027-0.101# Event LAUNCHROD occurred at t=0.173 seconds0.1731.2930.03-0.1120.1851.4890.034-0.1290.2031.8110.042-0.1560.232.3580.054-0.2020.2562.9690.068-0.2540.2793.5680.081-0.3040.34.170.095-0.3550.324.7860.109-0.4080.3425.4870.126-0.4690.3656.3380.146-0.5460.3927.3630.172-0.6420.4228.6540.206-0.7690.46810.8090.268-1.0010.51813.4720.354-1.3220.53514.4590.389-1.4520.54915.3150.42-1.5680.56216.10.45-1.6790.57416.830.478-1.7840.58517.5250.505-1.8870.59518.2020.533-1.990.60719.0060.566-2.1140.61619.6850.595-2.2220.62620.3880.625-2.3350.63721.1320.658-2.4570.64821.940.694-2.5910.6622.8590.735-2.7470.67423.9570.786-2.9360.69325.4660.857-3.2010.72127.8310.97-3.6240.75931.141.132-4.2280.7732.1791.183-4.4190.7833.0841.228-4.5860.78933.9241.269-4.7420.79734.7331.309-4.8920.80535.5361.349-5.040.81436.3661.39-5.1950.82237.2621.435-5.3610.83238.2731.485-5.550.84439.5161.548-5.7820.86241.3871.642-6.1340.88844.2911.789-6.6850.90846.5121.903-7.1110.91847.7351.967-7.3480.92748.7732.021-7.550.93549.7342.071-7.7390.94350.6712.12-7.9230.9551.622.171-8.1110.95852.6222.224-8.310.96853.7932.286-8.5430.9855.3612.371-8.8580.99857.7652.5-9.3441.02661.4882.703-10.11.03562.7022.769-10.3481.04363.812.829-10.5741.0564.8942.889-10.7951.05866.0172.95-11.0251.06767.2973.02-11.2871.07968.9573.111-11.6281.09671.4943.251-12.151.12175.4033.468-12.9611.1376.8243.547-13.2581.13978.1243.62-13.531.14779.4353.693-13.8051.15680.8763.774-14.1081.16782.6673.876-14.4871.18385.3994.031-15.0661.20889.5994.27-15.9611.21791.1984.361-16.3021.22692.6914.446-16.6211.23494.274.537-16.9591.24596.214.648-17.3751.26299.1664.817-18.011.286103.7025.079-18.9881.29104.3985.119-19.1391.295105.4475.18-19.3661.299106.1855.223-19.526# Event BURNOUT occurred at t=1.306 seconds1.306107.5755.303-19.8271.317109.6565.424-20.2791.334112.7695.605-20.9561.358117.4215.875-21.9671.374120.3346.044-22.61.393123.9046.252-23.3761.421129.2346.562-24.5361.439132.5876.757-25.2671.456135.7086.939-25.9481.482140.377.211-26.9661.508145.1467.49-28.0091.523147.9367.652-28.6191.542151.3727.853-29.371.57156.5038.153-30.4921.583158.8958.293-31.0161.594160.8358.406-31.441.842204.33610.964-41.0231.861207.66911.161-41.761.89212.64611.455-42.8621.921217.75911.758-43.9951.94221.06311.954-44.7291.969225.90812.241-45.8072.012233.12912.67-47.4152.062241.40813.163-49.2622.112249.61213.652-51.0962.162257.74214.138-52.9172.212265.79914.62-54.7262.262273.78415.1-56.5242.312281.69815.576-58.3092.342286.39415.859-59.372.387293.39116.281-60.9532.414297.60316.535-61.9082.449303.05416.865-63.1472.499310.7117.33-64.892.546317.72317.756-66.4892.582323.22218.091-67.7462.632330.70318.547-69.462.682338.11919.001-71.1622.732345.4719.451-72.8552.764350.17419.741-73.942.813357.18220.172-75.5612.841361.29320.426-76.5132.884367.42320.804-77.9342.934374.52421.243-79.5852.978380.69321.626-81.0233.014385.82721.946-82.2243.064392.77122.379-83.853.088396.04822.583-84.6193.117400.04822.833-85.5583.161406.01223.206-86.9613.182408.93523.39-87.653.211412.82823.634-88.573.254418.63224-89.9443.304425.324.421-91.5273.326428.11524.599-92.1963.354431.85724.835-93.0853.397437.43525.189-94.4153.42440.47125.381-95.143.443443.4625.572-95.8563.477447.92325.856-96.9273.527454.34526.267-98.4713.547456.89326.43-99.0843.567459.41226.591-99.6913.597463.17526.832-100.5983.629467.20127.091-101.5723.653470.20227.284-102.2993.688474.6827.573-103.3873.738480.88127.974-104.8973.764484.00128.177-105.6583.799488.28128.454-106.7033.849494.3728.85-108.1943.87496.95629.019-108.8293.894499.90129.212-109.5543.931504.29829.5-110.6393.97508.93529.804-111.7863.995511.88529.998-112.5164.032516.28730.288-113.6074.082522.14430.675-115.0644.109525.32730.885-115.8594.148529.81731.184-116.9824.198535.56331.566-118.4244.221538.10931.736-119.0644.245540.88231.921-119.7624.281545.01932.198-120.8054.326549.98832.531-122.0614.349552.61132.708-122.7274.382556.23932.953-123.654.431561.64433.318-125.0284.471566.08233.619-126.1624.521571.52933.99-127.5594.57576.87134.354-128.9344.62582.22934.722-130.324.67587.54235.087-131.6994.71591.72435.376-132.7874.76596.9635.738-134.1534.81602.15236.099-135.5144.853606.57136.407-136.6784.903611.68336.765-138.0284.935614.93436.993-138.894.971618.54237.247-139.8475.021623.55637.6-141.1825.071628.52937.952-142.5115.121633.45938.303-143.8345.149636.20738.499-144.5755.174638.67338.676-145.2425.212642.35138.94-146.2395.243645.33439.154-147.0495.278648.70739.397-147.9675.328653.46839.741-149.2685.364656.88939.99-150.2075.412661.38940.318-151.4475.462666.04340.659-152.7355.512670.65840.998-154.0175.562675.23541.336-155.2935.608679.39241.644-156.4575.658683.89541.979-157.7235.69686.78842.195-158.545.719689.3742.389-159.2725.758692.80242.647-160.2495.808697.1942.979-161.5045.845700.38943.221-162.4215.872702.74643.4-163.0995.908705.84343.636-163.9915.958710.11943.963-165.2286.008714.35944.289-166.4626.058718.56144.614-167.6926.108722.72744.938-168.9176.158726.85745.261-170.1386.208730.95145.583-171.3566.258735.00845.903-172.5686.308739.03146.222-173.7766.358743.01846.54-174.9816.408746.96946.857-176.186.458750.88647.173-177.3756.508754.76847.487-178.5666.545757.65347.722-179.4576.574759.8347.9-180.1326.602761.96148.076-180.7966.637764.63448.296-181.6326.687768.39148.608-182.8136.712770.25248.763-183.46.733771.81248.893-183.8926.755773.41149.027-184.3996.779775.20749.177-184.9686.806777.20549.344-185.6036.846780.10449.588-186.5286.896783.72349.895-187.6886.917785.22250.022-188.1726.935786.55150.136-188.6026.954787.89850.251-189.046.976789.4450.384-189.5427.009791.74250.583-190.2957.057795.16850.88-191.4227.094797.73151.103-192.2697.119799.44151.252-192.8357.144801.20451.407-193.4217.177803.41651.601-194.1587.225806.70951.892-195.267.275810.07852.191-196.3967.298811.59852.327-196.9127.321813.15652.467-197.4427.347814.89452.624-198.0377.383817.24952.837-198.8477.433820.51453.135-199.9777.47822.8853.352-200.7997.493824.37753.49-201.3217.512825.60553.603-201.757.533826.95753.727-202.2237.564828.89653.907-202.9047.61831.78154.175-203.9227.66834.90754.468-205.0337.693836.97254.663-205.7737.718838.50254.808-206.3247.742839.97854.948-206.8577.768841.58855.102-207.4427.801843.56355.293-208.1647.85846.50155.577-209.2457.9849.47555.867-210.3477.924850.94156.011-210.8927.944852.11456.126-211.337.963853.19856.233-211.7357.983854.36956.349-212.1748.008855.81656.492-212.7178.045857.97256.706-213.538.095860.83156.991-214.6168.145863.65857.277-215.6998.175865.33857.447-216.3488.205866.97857.615-216.9858.238868.8457.807-217.7128.279871.08158.039-218.5958.329873.79758.322-219.6728.379876.48458.605-220.7478.416878.43858.812-221.5338.45880.2259.002-222.2548.495882.57259.254-223.2118.526884.22759.432-223.8898.574886.68859.699-224.9038.624889.23359.977-225.9618.649890.45960.112-226.4768.668891.4560.222-226.8948.689892.560.339-227.3388.714893.70960.475-227.8548.742895.09960.631-228.4498.775896.72960.816-229.1528.825899.14961.093-230.2058.875901.54661.37-231.2578.903902.88361.525-231.8488.931904.19661.678-232.4318.953905.22861.799-232.898.973906.18261.911-233.3168.996907.20962.032-233.7769.021908.39762.173-234.3119.049909.6862.325-234.8919.081911.14862.5-235.5579.13913.32762.762-236.5549.18915.55663.033-237.5859.208916.80763.187-238.179.232917.86563.318-238.6689.256918.91363.448-239.1649.28919.95563.578-239.669.302920.89163.696-240.1089.324921.80963.813-240.5519.35922.92363.955-`;
+
+// Put the rawDump into textarea so user can edit and re-run if needed
+$('rawInput').value = rawDump;
+
+// Auto-parse once for convenience
+setTimeout(() => parseAndVisualize(), 300);
+
+</script>
+</body>
+</html>
